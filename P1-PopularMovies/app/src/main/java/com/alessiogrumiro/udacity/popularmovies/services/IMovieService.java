@@ -1,6 +1,9 @@
 package com.alessiogrumiro.udacity.popularmovies.services;
 
+import com.alessiogrumiro.udacity.popularmovies.enums.MoviesSortByEnum;
 import com.alessiogrumiro.udacity.popularmovies.exceptions.MissingApiKeyException;
+
+import java.util.List;
 
 import info.movito.themoviedbapi.TmdbMovies;
 import info.movito.themoviedbapi.model.MovieDb;
@@ -21,13 +24,13 @@ public interface IMovieService {
      * Fetch movies catalog
      * @return
      */
-    TmdbMovies getMovies() throws MissingApiKeyException;
+    List<MovieDb> getMovies(MoviesSortByEnum sortby) throws MissingApiKeyException;
 
     /**
      * Fetch movies catalog
      * @return
      */
-    TmdbMovies getMovies(boolean forceRefresh) throws MissingApiKeyException;
+    List<MovieDb> getMovies(MoviesSortByEnum sortby, boolean forceRefresh) throws MissingApiKeyException;
 
     /**
      * Fetch details for specific movie. It detects device language to retrieve info in user language.
