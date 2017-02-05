@@ -17,6 +17,9 @@ public class MovieDb {
     @SerializedName("poster_path")
     private String posterUrl;
 
+    @SerializedName("release_date")
+    private String releaseDate;
+
     @SerializedName("vote_count")
     private int voteCount;
 
@@ -25,6 +28,14 @@ public class MovieDb {
 
     @SerializedName("overview")
     private String overview;
+
+    public String getReleaseDate() {
+        return releaseDate;
+    }
+
+    public void setReleaseDate(String releaseDate) {
+        this.releaseDate = releaseDate;
+    }
 
     public String getOverview() {
         return overview;

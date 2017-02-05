@@ -1,6 +1,7 @@
 package com.alessiogrumiro.udacity.popularmovies.services;
 
 import android.os.AsyncTask;
+import android.text.TextUtils;
 import android.util.Log;
 
 import com.alessiogrumiro.udacity.popularmovies.enums.MoviesSortByEnum;
@@ -10,9 +11,10 @@ import com.alessiogrumiro.udacity.popularmovies.models.Movie;
 import com.alessiogrumiro.udacity.popularmovies.services.models.ConfigResponseContainer;
 import com.alessiogrumiro.udacity.popularmovies.services.models.MovieDb;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
-import java.util.Locale;
 
 
 /**
@@ -21,12 +23,11 @@ import java.util.Locale;
 
 public class MovieService implements IMovieService {
 
-
     private static final String TAG = "MovieService";
 
     private List<Movie> mMovies;
     private MoviesSortByEnum mLastSortBy;
-
+    private SimpleDateFormat mSimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd");
     private TmdbApiClient mApiClient;
 
     public MovieService() {
@@ -95,7 +96,7 @@ public class MovieService implements IMovieService {
                     }
 
                     if (!allMovies.isEmpty()) {
-                        mMovies = new ArrayList<Movie>(allMovies.size());
+                        mMovies = new ArrayList<>(allMovies.size());
                         ConfigResponseContainer config = mApiClient.getConfig();
                         for (MovieDb movieDb : allMovies) {
                             String completePosterUrl = String.format("%s%s%s",
@@ -110,6 +111,12 @@ public class MovieService implements IMovieService {
                             movie.setPosterUrl(completePosterUrl);
                             movie.setTitle(movieDb.getTitle());
                             movie.setVoteAverage(movieDb.getVoteAverage());
+                            movie.setVoteCount(movieDb.getVoteCount());
+                            if (!TextUtils.isEmpty(movieDb.getReleaseDate())) {
+                                Calendar calendar = Calendar.getInstance();
+                                calendar.setTime(mSimpleDateFormat.parse(movieDb.getReleaseDate()));
+                                movie.setYear(calendar.get(Calendar.YEAR));
+                            }
                             mMovies.add(movie);
                         }
                     }

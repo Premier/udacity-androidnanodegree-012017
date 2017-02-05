@@ -25,9 +25,9 @@ public class Movie implements Parcelable {
     private String posterUrl;
     private String overview;
     private float voteAverage;
-
-    public Movie() {
-    }
+    private int voteCount;
+    private int year;
+    private int duration;
 
     public Movie(Parcel in) {
         setId(in.readLong());
@@ -35,6 +35,36 @@ public class Movie implements Parcelable {
         setPosterUrl(in.readString());
         setOverview(in.readString());
         setVoteAverage(in.readFloat());
+        setVoteCount(in.readInt());
+        setYear(in.readInt());
+        setDuration(in.readInt());
+    }
+
+    public int getVoteCount() {
+        return voteCount;
+    }
+
+    public void setVoteCount(int voteCount) {
+        this.voteCount = voteCount;
+    }
+
+    public int getYear() {
+        return year;
+    }
+
+    public void setYear(int year) {
+        this.year = year;
+    }
+
+    public int getDuration() {
+        return duration;
+    }
+
+    public Movie() {
+    }
+
+    public void setDuration(int duration) {
+        this.duration = duration;
     }
 
     public long getId() {
@@ -89,6 +119,9 @@ public class Movie implements Parcelable {
         dest.writeString(posterUrl);
         dest.writeString(overview);
         dest.writeFloat(voteAverage);
+        dest.writeInt(voteCount);
+        dest.writeInt(year);
+        dest.writeInt(duration);
     }
 
 
