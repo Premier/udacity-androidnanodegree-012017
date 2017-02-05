@@ -9,4 +9,5 @@
     <string name="ok">Ok</string>
     <string name="movie_details">Movie details</string>
     <string name="error_no_data">No data</string>
+    <string name="error_no_apikey">Missing api key</string>
 </resources>

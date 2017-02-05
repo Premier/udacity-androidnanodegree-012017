@@ -2,12 +2,10 @@ package com.alessiogrumiro.udacity.popularmovies.adapters;
 
 import android.content.Context;
 import android.support.v7.widget.RecyclerView;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
-import android.widget.TextView;
 
 import com.alessiogrumiro.udacity.popularmovies.R;
 import com.alessiogrumiro.udacity.popularmovies.listeners.OnMovieClickListener;
@@ -74,9 +72,9 @@ public class MovieAdapter extends RecyclerView.Adapter<MovieAdapter.MovieViewHol
 
 
         public void bind(Movie movie) {
+            if (movie != null)
             Picasso.with(mContext)
                     .load(movie.getPosterUrl())
-                    //.centerInside()
                     .placeholder(mContext.getDrawable(R.mipmap.placeholder))
                     .into(mPosterView);
         }

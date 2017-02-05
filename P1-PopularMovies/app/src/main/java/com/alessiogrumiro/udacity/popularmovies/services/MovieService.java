@@ -1,20 +1,27 @@
 package com.alessiogrumiro.udacity.popularmovies.services;
 
+import android.content.Context;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.AsyncTask;
-import android.text.TextUtils;
 import android.util.Log;
 
+import com.alessiogrumiro.udacity.popularmovies.MovieApplication;
 import com.alessiogrumiro.udacity.popularmovies.enums.MoviesSortByEnum;
 import com.alessiogrumiro.udacity.popularmovies.exceptions.MissingApiKeyException;
-import com.alessiogrumiro.udacity.popularmovies.listeners.OnLoadingMoviesListener;
+import com.alessiogrumiro.udacity.popularmovies.listeners.OnMoviesLoadListener;
 import com.alessiogrumiro.udacity.popularmovies.models.Movie;
+import com.alessiogrumiro.udacity.popularmovies.services.adapters.MovieAdapter;
 import com.alessiogrumiro.udacity.popularmovies.services.models.ConfigResponseContainer;
 import com.alessiogrumiro.udacity.popularmovies.services.models.MovieDb;
+import com.alessiogrumiro.udacity.popularmovies.utils.AsyncTaskResult;
 
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 
 /**
@@ -27,11 +34,12 @@ public class MovieService implements IMovieService {
 
     private List<Movie> mMovies;
     private MoviesSortByEnum mLastSortBy;
-    private SimpleDateFormat mSimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd");
     private TmdbApiClient mApiClient;
+    private ConnectivityManager mConnectivityManager;
 
     public MovieService() {
         mApiClient = new TmdbApiClient();
+        mConnectivityManager = (ConnectivityManager) MovieApplication.getInstance().getSystemService(Context.CONNECTIVITY_SERVICE);
     }
 
     public void setApiKey(String apiKey) {
@@ -46,105 +54,97 @@ public class MovieService implements IMovieService {
         mApiClient.setLanguage(language);
     }
 
+    private String getSortByString(MoviesSortByEnum enumValue) {
+        switch (enumValue) {
+            case MostPopular:
+                return TmdbApiClient.SORTBY_MOST_POPULAR;
+            default:
+                return TmdbApiClient.SORTBY_TOP_RATED;
+        }
+    }
+
     @Override
-    public void getMovies(MoviesSortByEnum sortby, OnLoadingMoviesListener listener) {
+    public void getMovies(MoviesSortByEnum sortby, OnMoviesLoadListener listener) {
         getMovies(sortby, false, listener);
     }
 
     @Override
     public void getMovies(MoviesSortByEnum sortby, boolean forceRefresh,
-                          final OnLoadingMoviesListener listener) {
+                          final OnMoviesLoadListener listener) {
         if (listener == null)
             throw new IllegalArgumentException("You have to set a listener for results");
 
-        if (sortby == mLastSortBy && !forceRefresh && mMovies != null)
-            listener.onLoadingComplete(mMovies);
+        if (sortby == mLastSortBy && !forceRefresh && mMovies != null) {
+            listener.onMoviesLoadComplete(mMovies);
+            return;
+        }
 
         mLastSortBy = sortby;
 
-        new AsyncTask<Void, Void, List<Movie>>() {
-
+        new AsyncTask<Void, Void, AsyncTaskResult<List<Movie>>>() {
             @Override
             protected void onPreExecute() {
                 super.onPreExecute();
-                // TODO check network status
-
-                if (listener != null) listener.onLoadingStart();
+                NetworkInfo networkInfo = mConnectivityManager.getActiveNetworkInfo();
+                if (networkInfo == null || !networkInfo.isConnected()) {
+                    listener.onMoviesLoadFail(new Exception("No network, please connect and retry"));
+                    cancel(true);
+                } else {
+                    listener.onMoviesLoadStart();
+                }
             }
 
             @Override
-            protected List<Movie> doInBackground(Void... params) {
-                String sortbyValue = TmdbApiClient.SORTBY_TOP_RATED;
-                switch (mLastSortBy) {
-                    case MostPopular:
-                        sortbyValue = TmdbApiClient.SORTBY_MOST_POPULAR;
-                        break;
-                    default:
-                }
-
+            protected AsyncTaskResult<List<Movie>> doInBackground(Void... params) {
+                List<Movie> movies = null;
                 try {
-                    List<List<MovieDb>> movieLists = new ArrayList<List<MovieDb>>(5);
-                    movieLists.add(mApiClient.getMovies(sortbyValue, 1));
-                    movieLists.add(mApiClient.getMovies(sortbyValue, 2));
-                    movieLists.add(mApiClient.getMovies(sortbyValue, 3));
-                    movieLists.add(mApiClient.getMovies(sortbyValue, 4));
-                    movieLists.add(mApiClient.getMovies(sortbyValue, 5));
+                    final String sortbyString = getSortByString(mLastSortBy);
 
-                    List<MovieDb> allMovies = new ArrayList<MovieDb>();
-                    for (List<MovieDb> l : movieLists) {
-                        allMovies.addAll(l);
+                    ExecutorService executorService = Executors.newFixedThreadPool(5);
+                    List<Callable<List<MovieDb>>> callables = new ArrayList<>();
+                    for (int i : new int[]{1, 2, 3, 4, 5}) {
+                        final int pageIndex = i;
+                        callables.add(new Callable<List<MovieDb>>() {
+                            @Override
+                            public List<MovieDb> call() throws Exception {
+                                return mApiClient.getMovies(sortbyString, pageIndex);
+                            }
+                        });
                     }
+                    List<Future<List<MovieDb>>> futures = executorService.invokeAll(callables);
+
+                    List<MovieDb> allMovies = new ArrayList<>();
+                    for (Future<List<MovieDb>> f : futures) {
+                        List<MovieDb> results = f.get();
+                        if (results != null && results.size() > 0)
+                            allMovies.addAll(results);
+                    }
+                    executorService.shutdown();
 
                     if (!allMovies.isEmpty()) {
-                        mMovies = new ArrayList<>(allMovies.size());
                         ConfigResponseContainer config = mApiClient.getConfig();
-                        for (MovieDb movieDb : allMovies) {
-                            String completePosterUrl = String.format("%s%s%s",
-                                    config.getImageParams().getBaseUrlSecure(),
-                                    config.getImageParams().getPosterSizes().get(2),
-                                    movieDb.getPosterUrl()
-                            );
-
-                            Movie movie = new Movie();
-                            movie.setId(movieDb.getId());
-                            movie.setOverview(movieDb.getOverview());
-                            movie.setPosterUrl(completePosterUrl);
-                            movie.setTitle(movieDb.getTitle());
-                            movie.setVoteAverage(movieDb.getVoteAverage());
-                            movie.setVoteCount(movieDb.getVoteCount());
-                            if (!TextUtils.isEmpty(movieDb.getReleaseDate())) {
-                                Calendar calendar = Calendar.getInstance();
-                                calendar.setTime(mSimpleDateFormat.parse(movieDb.getReleaseDate()));
-                                movie.setYear(calendar.get(Calendar.YEAR));
-                            }
-                            mMovies.add(movie);
-                        }
+                        movies = MovieAdapter.toMovie(allMovies, config);
                     }
                 } catch (MissingApiKeyException e) {
                     Log.e(TAG, e.getMessage(), e);
-                    // TODO handle MissingApiKeyException
+                    return new AsyncTaskResult<>(e);
                 } catch (Exception e) {
                     Log.e(TAG, e.getMessage(), e);
+                    return new AsyncTaskResult<>(e);
                 }
-                return mMovies;
+                return new AsyncTaskResult<>(movies);
             }
 
             @Override
-            protected void onPostExecute(List<Movie> movies) {
-                super.onPostExecute(movies);
-                if (listener != null) listener.onLoadingComplete(movies);
+            protected void onPostExecute(AsyncTaskResult<List<Movie>> result) {
+                super.onPostExecute(result);
+                if (result.getError() != null) {
+                    listener.onMoviesLoadFail(result.getError());
+                } else {
+                    mMovies = result.getResult();
+                    listener.onMoviesLoadComplete(result.getResult());
+                }
             }
         }.execute();
     }
-//
-//    @Override
-//    public MovieDb getMovie(int id) throws MissingApiKeyException {
-//        MovieDb result = null;
-//        if (mMovies != null) {
-//            TmdbMovies moviesContainer = mApiClient.getMovies();
-//            if (moviesContainer != null)
-//                result = moviesContainer.getMovie(id, mDefaultLocale);
-//        }
-//        return result;
-//    }
 }

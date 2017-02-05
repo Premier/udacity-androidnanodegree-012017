@@ -29,6 +29,7 @@ public class SettingsActivity extends AppCompatActivity implements View.OnClickL
         try {
             i = new Intent(context, SettingsActivity.class);
             i.putExtra(EXTRA_APIKEY, apikey);
+            i.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
         } catch (Exception e) {
             Log.e(TAG, e.getMessage(), e);
         }
@@ -61,7 +62,7 @@ public class SettingsActivity extends AppCompatActivity implements View.OnClickL
         String apikey = mApiKeyView.getText().toString();
         if (TextUtils.isEmpty(apikey)) {
             if (mToast != null) mToast.cancel();
-            mToast = Toast.makeText(this, "", Toast.LENGTH_SHORT);
+            mToast = Toast.makeText(this, R.string.error_no_apikey, Toast.LENGTH_SHORT);
             mToast.show();
         } else {
             Intent resultIntent = new Intent();

@@ -8,8 +8,9 @@ import java.util.List;
  * Created by Alessio Grumiro on 27/01/17.
  */
 
-public interface OnLoadingMoviesListener {
+public interface OnMoviesLoadListener {
 
-    void onLoadingStart();
-    void onLoadingComplete(List<Movie> movies);
+    void onMoviesLoadStart();
+    void onMoviesLoadComplete(List<Movie> movies);
+    void onMoviesLoadFail(Exception e);
 }

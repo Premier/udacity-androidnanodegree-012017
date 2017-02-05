@@ -12,11 +12,12 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewStub;
 import android.widget.Button;
+import android.widget.Toast;
 
 import com.alessiogrumiro.udacity.popularmovies.adapters.MovieAdapter;
 import com.alessiogrumiro.udacity.popularmovies.enums.MoviesSortByEnum;
-import com.alessiogrumiro.udacity.popularmovies.listeners.OnLoadingMoviesListener;
 import com.alessiogrumiro.udacity.popularmovies.listeners.OnMovieClickListener;
+import com.alessiogrumiro.udacity.popularmovies.listeners.OnMoviesLoadListener;
 import com.alessiogrumiro.udacity.popularmovies.models.Movie;
 import com.alessiogrumiro.udacity.popularmovies.services.IMovieService;
 
@@ -26,6 +27,8 @@ public class HomeActivity extends AppCompatActivity implements OnMovieClickListe
 
     private static final String TAG = "HomeActivity";
     private static final int REQCODE_SETTINGS = 100;
+    private static final String EXTRA_LAST_SORTBY = "extra_lastsortby";
+    private static final String EXTRA_LISTSTATE = "extra_liststate";
 
     // UI
     private RecyclerView mMoviesView;
@@ -53,40 +56,51 @@ public class HomeActivity extends AppCompatActivity implements OnMovieClickListe
         mLoadingView = inflatedView.findViewById(android.R.id.progress);
         mNodataView = inflatedView.findViewById(R.id.nodata_layout);
 
-        mRefreshButton.setOnClickListener(this);
-
         // init recyclerview
-        int spanCount = getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE ? 4 : 2;
-        GridLayoutManager layoutManager = new GridLayoutManager(this, spanCount);
-        mMoviesView.setLayoutManager(layoutManager);
-
-        mMoviesView.setHasFixedSize(true);
         mAdapter = new MovieAdapter(this, this);
 
         mMoviesView.setAdapter(mAdapter);
+        int spanCount = getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE ? 4 : 2;
+        GridLayoutManager layoutManager = new GridLayoutManager(this, spanCount);
 
+        mMoviesView.setLayoutManager(layoutManager);
+        mMoviesView.setHasFixedSize(true);
     }
 
-    private void loadMovies() {
-        mMovieService.getMovies(mCurrentMovieSort, new OnLoadingMoviesListener() {
+    private void loadMovies(final boolean reload) {
+        mMovieService.getMovies(mCurrentMovieSort, reload, new OnMoviesLoadListener() {
             @Override
-            public void onLoadingStart() {
+            public void onMoviesLoadStart() {
                 mMoviesView.setVisibility(View.GONE);
                 mLoadingView.setVisibility(View.VISIBLE);
                 mNodataView.setVisibility(View.GONE);
             }
 
             @Override
-            public void onLoadingComplete(List<Movie> movies) {
+            public void onMoviesLoadComplete(List<Movie> movies) {
                 if (movies != null && movies.size() > 0) {
                     mAdapter.setData(movies);
                     mLoadingView.setVisibility(View.GONE);
                     mNodataView.setVisibility(View.GONE);
                     mMoviesView.setVisibility(View.VISIBLE);
+                    if (reload)
                     mMoviesView.scrollToPosition(0);
                 } else {
                     mLoadingView.setVisibility(View.GONE);
                     mNodataView.setVisibility(View.VISIBLE);
+                }
+            }
+
+            @Override
+            public void onMoviesLoadFail(Exception e) {
+                mLoadingView.setVisibility(View.GONE);
+                Toast.makeText(HomeActivity.this, e.getMessage(), Toast.LENGTH_LONG).show();
+                if (mMoviesView.getAdapter() == null && mMoviesView.getAdapter().getItemCount() == 0) {
+                    mMoviesView.setVisibility(View.GONE);
+                    mNodataView.setVisibility(View.VISIBLE);
+                } else {
+                    mNodataView.setVisibility(View.GONE);
+                    mMoviesView.setVisibility(View.VISIBLE);
                 }
             }
         });
@@ -95,6 +109,9 @@ public class HomeActivity extends AppCompatActivity implements OnMovieClickListe
     @Override
     protected void onStart() {
         super.onStart();
+        // bind UI
+        mRefreshButton.setOnClickListener(this);
+
         if (TextUtils.isEmpty(mMovieService.getApiKey())) {
             String apiKey = getSharedPreferences(MovieApplication.PREF_APIKEY, MODE_PRIVATE).getString(MovieApplication.PREF_APIKEY, "");
             if (TextUtils.isEmpty(apiKey)) {
@@ -103,6 +120,14 @@ public class HomeActivity extends AppCompatActivity implements OnMovieClickListe
                 mMovieService.setApiKey(apiKey);
             }
         }
+        loadMovies(false);
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        // unbind UI
+        mRefreshButton.setOnClickListener(null);
     }
 
     @Override
@@ -117,14 +142,9 @@ public class HomeActivity extends AppCompatActivity implements OnMovieClickListe
                         .putString(MovieApplication.PREF_APIKEY, newApiKey)
                         .commit();
                 mMovieService.setApiKey(newApiKey);
+                loadMovies(true);
             }
         }
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        loadMovies();
     }
 
     @Override
@@ -134,15 +154,42 @@ public class HomeActivity extends AppCompatActivity implements OnMovieClickListe
     }
 
     @Override
+    public boolean onPrepareOptionsMenu(Menu menu) {
+        MenuItem itemMostPopular = menu.findItem(R.id.action_sortby_mostpopular);
+        MenuItem itemTopRated = menu.findItem(R.id.action_sortby_rate);
+
+        for (MenuItem item : new MenuItem[]{itemMostPopular, itemTopRated}) {
+            String title = item.getTitle().toString();
+            if (title.indexOf(">") >= 0) {
+                title = title.substring(2, title.length());
+                item.setTitle(title);
+            }
+        }
+        switch (mCurrentMovieSort) {
+            case MostPopular:
+                itemMostPopular.setTitle(String.format("> %s", itemMostPopular.getTitle()));
+                break;
+            default:
+                itemTopRated.setTitle(String.format("> %s", itemTopRated.getTitle()));
+                break;
+        }
+        return true;
+    }
+
+    @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        MoviesSortByEnum newSort = mCurrentMovieSort;
         switch (item.getItemId()) {
             case R.id.action_sortby_rate:
-                newSort = MoviesSortByEnum.TopRated;
-                break;
+                mCurrentMovieSort = MoviesSortByEnum.TopRated;
+                loadMovies(true);
+                return true;
             case R.id.action_sortby_mostpopular:
-                newSort = MoviesSortByEnum.MostPopular;
-                break;
+                mCurrentMovieSort = MoviesSortByEnum.MostPopular;
+                loadMovies(true);
+                return true;
+            case R.id.action_refresh:
+                loadMovies(true);
+                return true;
             case R.id.action_settings:
                 String apiKey = getSharedPreferences(MovieApplication.PREF_APIKEY, MODE_PRIVATE).getString(MovieApplication.PREF_APIKEY, "");
                 startActivityForResult(SettingsActivity.newIntent(this, apiKey), REQCODE_SETTINGS);
@@ -150,11 +197,24 @@ public class HomeActivity extends AppCompatActivity implements OnMovieClickListe
             default:
                 return super.onOptionsItemSelected(item);
         }
-        if (newSort != mCurrentMovieSort) {
-            mCurrentMovieSort = newSort;
-            loadMovies();
+
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putString(EXTRA_LAST_SORTBY, String.valueOf(mCurrentMovieSort));
+    }
+
+    @Override
+    protected void onRestoreInstanceState(Bundle savedInstanceState) {
+        super.onRestoreInstanceState(savedInstanceState);
+        if (savedInstanceState != null) {
+            if (savedInstanceState.containsKey(EXTRA_LAST_SORTBY)) {
+                String value = savedInstanceState.getString(EXTRA_LAST_SORTBY);
+                mCurrentMovieSort = MoviesSortByEnum.valueOf(value);
+            }
         }
-        return true;
     }
 
     @Override
@@ -166,7 +226,7 @@ public class HomeActivity extends AppCompatActivity implements OnMovieClickListe
     public void onClick(View v) {
         switch (v.getId()) {
             case android.R.id.button1: {
-                loadMovies();
+                loadMovies(true);
                 break;
             }
         }

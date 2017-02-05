@@ -7,8 +7,6 @@ import android.content.SharedPreferences;
 import com.alessiogrumiro.udacity.popularmovies.services.IMovieService;
 import com.alessiogrumiro.udacity.popularmovies.services.MovieService;
 
-import java.util.Locale;
-
 /**
  * Created by Alessio Grumiro on 25/01/17.
  */
@@ -23,10 +21,11 @@ public class MovieApplication extends Application {
 
     public MovieApplication(){
         sInstance = this;
-        sMovieService = new MovieService();
     }
 
     public static IMovieService getMovieService(){
+        if (sMovieService == null)
+            sMovieService = new MovieService();
         return sMovieService;
     }
 

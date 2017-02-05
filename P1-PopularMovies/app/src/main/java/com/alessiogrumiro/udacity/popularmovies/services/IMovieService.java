@@ -1,7 +1,7 @@
 package com.alessiogrumiro.udacity.popularmovies.services;
 
 import com.alessiogrumiro.udacity.popularmovies.enums.MoviesSortByEnum;
-import com.alessiogrumiro.udacity.popularmovies.listeners.OnLoadingMoviesListener;
+import com.alessiogrumiro.udacity.popularmovies.listeners.OnMoviesLoadListener;
 
 
 /**
@@ -32,18 +32,11 @@ public interface IMovieService {
      * Fetch movies catalog
      * @return
      */
-    void getMovies(MoviesSortByEnum sortby, final OnLoadingMoviesListener listener);
+    void getMovies(MoviesSortByEnum sortby, final OnMoviesLoadListener listener);
 
     /**
      * Fetch movies catalog
      * @return
      */
-    void getMovies(MoviesSortByEnum sortby, boolean forceRefresh, final OnLoadingMoviesListener listener);
-
-    /**
-     * Fetch details for specific movie. It detects device language to retrieve info in user language.
-     * @param id
-     * @return
-     */
-    //Movie getMovie(int id);
+    void getMovies(MoviesSortByEnum sortby, boolean forceRefresh, final OnMoviesLoadListener listener);
 }
