@@ -1,18 +1,19 @@
 package com.alessiogrumiro.udacity.popularmovies.services;
 
-import android.text.TextUtils;
+import android.os.AsyncTask;
+import android.util.Log;
 
-import com.alessiogrumiro.udacity.popularmovies.MovieApplication;
 import com.alessiogrumiro.udacity.popularmovies.enums.MoviesSortByEnum;
 import com.alessiogrumiro.udacity.popularmovies.exceptions.MissingApiKeyException;
+import com.alessiogrumiro.udacity.popularmovies.listeners.OnLoadingMoviesListener;
+import com.alessiogrumiro.udacity.popularmovies.models.Movie;
+import com.alessiogrumiro.udacity.popularmovies.services.models.ConfigResponseContainer;
+import com.alessiogrumiro.udacity.popularmovies.services.models.MovieDb;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-import info.movito.themoviedbapi.TmdbApi;
-import info.movito.themoviedbapi.TmdbMovies;
-import info.movito.themoviedbapi.model.MovieDb;
-import info.movito.themoviedbapi.model.core.MovieResultsPage;
 
 /**
  * Created by Alessio Grumiro on 25/01/17.
@@ -20,64 +21,123 @@ import info.movito.themoviedbapi.model.core.MovieResultsPage;
 
 public class MovieService implements IMovieService {
 
-    public static final String PREF_API_KEY = "themoviedb_apikey";
-    private String mApiKey;
-    private TmdbApi mApiClient;
-    private List<MovieDb> mMovies;
+
+    private static final String TAG = "MovieService";
+
+    private List<Movie> mMovies;
     private MoviesSortByEnum mLastSortBy;
-    private String mDefaultLocale;
+
+    private TmdbApiClient mApiClient;
 
     public MovieService() {
-        mDefaultLocale = Locale.getDefault().getDisplayLanguage();
-        mApiKey = MovieApplication.getPreferences().getString(PREF_API_KEY, "");
-        if (!TextUtils.isEmpty(mApiKey)) mApiClient = new TmdbApi(mApiKey);
+        mApiClient = new TmdbApiClient();
+    }
+
+    public void setApiKey(String apiKey) {
+        mApiClient.setApiKey(apiKey);
+    }
+
+    public String getApiKey() {
+        return mApiClient.getApiKey();
+    }
+
+    public void setLanguage(String language) {
+        mApiClient.setLanguage(language);
     }
 
     @Override
-    public void setApiKey(String apikey) {
-        mApiKey = apikey;
-        if (!TextUtils.isEmpty(mApiKey)) mApiClient = new TmdbApi(mApiKey);
+    public void getMovies(MoviesSortByEnum sortby, OnLoadingMoviesListener listener) {
+        getMovies(sortby, false, listener);
     }
 
     @Override
-    public List<MovieDb> getMovies(MoviesSortByEnum sortby) throws MissingApiKeyException {
-        return getMovies(sortby, false);
-    }
+    public void getMovies(MoviesSortByEnum sortby, boolean forceRefresh,
+                          final OnLoadingMoviesListener listener) {
+        if (listener == null)
+            throw new IllegalArgumentException("You have to set a listener for results");
 
-    @Override
-    public List<MovieDb> getMovies(MoviesSortByEnum sortby, boolean forceRefresh) throws MissingApiKeyException {
-        if (TextUtils.isEmpty(mApiKey)) throw new MissingApiKeyException();
-        if (mMovies == null || sortby != mLastSortBy || forceRefresh) {
-            mLastSortBy = sortby;
-            TmdbMovies moviesContainer = mApiClient.getMovies();
-            if (moviesContainer != null) {
-                switch (mLastSortBy) {
-                    case TopRated: {
-                        MovieResultsPage page = moviesContainer.getTopRatedMovies(mDefaultLocale, 0);
-                        if (page != null)
-                            mMovies = page.getResults();
-                        break;
-                    }
-                    default: {
-                        MovieResultsPage page = moviesContainer.getNowPlayingMovies(mDefaultLocale, 0);
-                        if (page != null)
-                            mMovies = page.getResults();
-                    }
-                }
+        if (sortby == mLastSortBy && !forceRefresh && mMovies != null)
+            listener.onLoadingComplete(mMovies);
+
+        mLastSortBy = sortby;
+
+        new AsyncTask<Void, Void, List<Movie>>() {
+
+            @Override
+            protected void onPreExecute() {
+                super.onPreExecute();
+                // TODO check network status
+
+                if (listener != null) listener.onLoadingStart();
             }
-        }
 
-        return mMovies;
-    }
+            @Override
+            protected List<Movie> doInBackground(Void... params) {
+                String sortbyValue = TmdbApiClient.SORTBY_TOP_RATED;
+                switch (mLastSortBy) {
+                    case MostPopular:
+                        sortbyValue = TmdbApiClient.SORTBY_MOST_POPULAR;
+                        break;
+                    default:
+                }
 
-    @Override
-    public MovieDb getMovie(int id) throws MissingApiKeyException {
-        MovieDb result = null;
-        if (mMovies != null) {
-            TmdbMovies moviesContainer = mApiClient.getMovies();
-            if (moviesContainer != null)
-                result = moviesContainer.getMovie(id, mDefaultLocale);
-        }
-        return result;
+                try {
+                    List<List<MovieDb>> movieLists = new ArrayList<List<MovieDb>>(5);
+                    movieLists.add(mApiClient.getMovies(sortbyValue, 1));
+                    movieLists.add(mApiClient.getMovies(sortbyValue, 2));
+                    movieLists.add(mApiClient.getMovies(sortbyValue, 3));
+                    movieLists.add(mApiClient.getMovies(sortbyValue, 4));
+                    movieLists.add(mApiClient.getMovies(sortbyValue, 5));
+
+                    List<MovieDb> allMovies = new ArrayList<MovieDb>();
+                    for (List<MovieDb> l : movieLists) {
+                        allMovies.addAll(l);
+                    }
+
+                    if (!allMovies.isEmpty()) {
+                        mMovies = new ArrayList<Movie>(allMovies.size());
+                        ConfigResponseContainer config = mApiClient.getConfig();
+                        for (MovieDb movieDb : allMovies) {
+                            String completePosterUrl = String.format("%s%s%s",
+                                    config.getImageParams().getBaseUrlSecure(),
+                                    config.getImageParams().getPosterSizes().get(2),
+                                    movieDb.getPosterUrl()
+                            );
+
+                            Movie movie = new Movie();
+                            movie.setId(movieDb.getId());
+                            movie.setOverview(movieDb.getOverview());
+                            movie.setPosterUrl(completePosterUrl);
+                            movie.setTitle(movieDb.getTitle());
+                            movie.setVoteAverage(movieDb.getVoteAverage());
+                            mMovies.add(movie);
+                        }
+                    }
+                } catch (MissingApiKeyException e) {
+                    Log.e(TAG, e.getMessage(), e);
+                    // TODO handle MissingApiKeyException
+                } catch (Exception e) {
+                    Log.e(TAG, e.getMessage(), e);
+                }
+                return mMovies;
+            }
+
+            @Override
+            protected void onPostExecute(List<Movie> movies) {
+                super.onPostExecute(movies);
+                if (listener != null) listener.onLoadingComplete(movies);
+            }
+        }.execute();
     }
+//
+//    @Override
+//    public MovieDb getMovie(int id) throws MissingApiKeyException {
+//        MovieDb result = null;
+//        if (mMovies != null) {
+//            TmdbMovies moviesContainer = mApiClient.getMovies();
+//            if (moviesContainer != null)
+//                result = moviesContainer.getMovie(id, mDefaultLocale);
+//        }
+//        return result;
+//    }
 }

@@ -1,12 +1,8 @@
 package com.alessiogrumiro.udacity.popularmovies.services;
 
 import com.alessiogrumiro.udacity.popularmovies.enums.MoviesSortByEnum;
-import com.alessiogrumiro.udacity.popularmovies.exceptions.MissingApiKeyException;
+import com.alessiogrumiro.udacity.popularmovies.listeners.OnLoadingMoviesListener;
 
-import java.util.List;
-
-import info.movito.themoviedbapi.TmdbMovies;
-import info.movito.themoviedbapi.model.MovieDb;
 
 /**
  * Created by Alessio Grumiro on 25/01/17.
@@ -15,27 +11,39 @@ import info.movito.themoviedbapi.model.MovieDb;
 public interface IMovieService {
 
     /**
-     * Set current apikey
-     * @param apikey
+     * Set service apikey for api call
+     * @param apiKey
      */
-    void setApiKey(String apikey);
+    void setApiKey(String apiKey);
+
+    /**
+     *
+     * @return
+     */
+    String getApiKey();
+
+    /**
+     * Set language for movies list
+     * @param language
+     */
+    void setLanguage(String language);
 
     /**
      * Fetch movies catalog
      * @return
      */
-    List<MovieDb> getMovies(MoviesSortByEnum sortby) throws MissingApiKeyException;
+    void getMovies(MoviesSortByEnum sortby, final OnLoadingMoviesListener listener);
 
     /**
      * Fetch movies catalog
      * @return
      */
-    List<MovieDb> getMovies(MoviesSortByEnum sortby, boolean forceRefresh) throws MissingApiKeyException;
+    void getMovies(MoviesSortByEnum sortby, boolean forceRefresh, final OnLoadingMoviesListener listener);
 
     /**
      * Fetch details for specific movie. It detects device language to retrieve info in user language.
      * @param id
      * @return
      */
-    MovieDb getMovie(int id) throws MissingApiKeyException;
+    //Movie getMovie(int id);
 }

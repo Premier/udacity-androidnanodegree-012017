@@ -2,13 +2,18 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item
-        android:id="@+id/sortby_date"
+        android:id="@+id/action_sortby_mostpopular"
         android:orderInCategory="0"
-        android:title="@string/menu_sortby_date"
-        app:showAsAction="ifRoom" />
+        android:title="@string/menu_sortby_mostpopular"
+        app:showAsAction="never" />
     <item
-        android:id="@+id/sortby_rate"
+        android:id="@+id/action_sortby_rate"
         android:orderInCategory="1"
         android:title="@string/menu_sortby_rate"
-        app:showAsAction="ifRoom" />
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_settings"
+        android:orderInCategory="2"
+        android:title="@string/title_activity_settings"
+        app:showAsAction="never" />
 </menu>

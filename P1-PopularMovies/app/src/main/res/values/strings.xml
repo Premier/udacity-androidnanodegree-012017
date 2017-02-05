@@ -1,6 +1,10 @@
 <resources>
     <string name="app_name">Popular Movies</string>
-    <string name="menu_sortby_date">Sort by date</string>
-    <string name="menu_sortby_rate">Sort by rate</string>
-
+    <string name="menu_sortby_mostpopular">Most popular</string>
+    <string name="menu_sortby_rate">Top rated</string>
+    <string name="no_data">No data here</string>
+    <string name="refresh">Refresh</string>
+    <string name="title_activity_settings">Settings</string>
+    <string name="insert_apikey">Please insert TheMovieDB api key</string>
+    <string name="ok">Ok</string>
 </resources>

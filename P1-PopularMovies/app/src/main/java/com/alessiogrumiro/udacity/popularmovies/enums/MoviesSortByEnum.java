@@ -6,5 +6,5 @@ package com.alessiogrumiro.udacity.popularmovies.enums;
 
 public enum MoviesSortByEnum {
     TopRated,
-    Latest
+    MostPopular
 }
