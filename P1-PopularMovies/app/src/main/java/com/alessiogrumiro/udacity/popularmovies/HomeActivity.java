@@ -113,7 +113,7 @@ public class HomeActivity extends AppCompatActivity implements OnMovieClickListe
         mRefreshButton.setOnClickListener(this);
 
         if (TextUtils.isEmpty(mMovieService.getApiKey())) {
-            String apiKey = getSharedPreferences(MovieApplication.PREF_APIKEY, MODE_PRIVATE).getString(MovieApplication.PREF_APIKEY, "");
+            String apiKey = getSharedPreferences(MovieApplication.PREF_NAME, MODE_PRIVATE).getString(MovieApplication.PREF_APIKEY, "");
             if (TextUtils.isEmpty(apiKey)) {
                 startActivityForResult(SettingsActivity.newIntent(this), REQCODE_SETTINGS);
             } else {
@@ -135,9 +135,9 @@ public class HomeActivity extends AppCompatActivity implements OnMovieClickListe
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == REQCODE_SETTINGS && resultCode == RESULT_OK) {
             String newApiKey = data.getStringExtra(SettingsActivity.EXTRA_APIKEY);
-            String apiKey = getSharedPreferences(MovieApplication.PREF_APIKEY, MODE_PRIVATE).getString(MovieApplication.PREF_APIKEY, "");
+            String apiKey = getSharedPreferences(MovieApplication.PREF_NAME, MODE_PRIVATE).getString(MovieApplication.PREF_APIKEY, "");
             if (!TextUtils.equals(apiKey, newApiKey)) {
-                getSharedPreferences(MovieApplication.PREF_APIKEY, MODE_PRIVATE)
+                getSharedPreferences(MovieApplication.PREF_NAME, MODE_PRIVATE)
                         .edit()
                         .putString(MovieApplication.PREF_APIKEY, newApiKey)
                         .commit();
@@ -191,7 +191,7 @@ public class HomeActivity extends AppCompatActivity implements OnMovieClickListe
                 loadMovies(true);
                 return true;
             case R.id.action_settings:
-                String apiKey = getSharedPreferences(MovieApplication.PREF_APIKEY, MODE_PRIVATE).getString(MovieApplication.PREF_APIKEY, "");
+                String apiKey = getSharedPreferences(MovieApplication.PREF_NAME, MODE_PRIVATE).getString(MovieApplication.PREF_APIKEY, "");
                 startActivityForResult(SettingsActivity.newIntent(this, apiKey), REQCODE_SETTINGS);
                 return true;
             default:

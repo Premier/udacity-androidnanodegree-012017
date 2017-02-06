@@ -1,8 +1,6 @@
 package com.alessiogrumiro.udacity.popularmovies;
 
 import android.app.Application;
-import android.content.Context;
-import android.content.SharedPreferences;
 
 import com.alessiogrumiro.udacity.popularmovies.services.IMovieService;
 import com.alessiogrumiro.udacity.popularmovies.services.MovieService;
@@ -30,12 +28,6 @@ public class MovieApplication extends Application {
     }
 
     public static Application getInstance(){
-        // TODO handle singleton
         return sInstance;
-    }
-
-    public static SharedPreferences getPreferences(){
-        // TODO handle singleton
-        return MovieApplication.getInstance().getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
     }
 }

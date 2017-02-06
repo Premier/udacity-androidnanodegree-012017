@@ -54,15 +54,6 @@ public class MovieService implements IMovieService {
         mApiClient.setLanguage(language);
     }
 
-    private String getSortByString(MoviesSortByEnum enumValue) {
-        switch (enumValue) {
-            case MostPopular:
-                return TmdbApiClient.SORTBY_MOST_POPULAR;
-            default:
-                return TmdbApiClient.SORTBY_TOP_RATED;
-        }
-    }
-
     @Override
     public void getMovies(MoviesSortByEnum sortby, OnMoviesLoadListener listener) {
         getMovies(sortby, false, listener);
@@ -98,7 +89,6 @@ public class MovieService implements IMovieService {
             protected AsyncTaskResult<List<Movie>> doInBackground(Void... params) {
                 List<Movie> movies = null;
                 try {
-                    final String sortbyString = getSortByString(mLastSortBy);
 
                     ExecutorService executorService = Executors.newFixedThreadPool(5);
                     List<Callable<List<MovieDb>>> callables = new ArrayList<>();
@@ -107,7 +97,7 @@ public class MovieService implements IMovieService {
                         callables.add(new Callable<List<MovieDb>>() {
                             @Override
                             public List<MovieDb> call() throws Exception {
-                                return mApiClient.getMovies(sortbyString, pageIndex);
+                                return mApiClient.movies(mLastSortBy, pageIndex);
                             }
                         });
                     }
